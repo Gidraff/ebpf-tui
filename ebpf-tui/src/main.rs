@@ -1,5 +1,9 @@
+// use anyhow::{Context as _, Ok};
 use anyhow::Context as _;
-use aya::programs::{Xdp, XdpFlags};
+use aya::{
+    programs::{Xdp, XdpFlags},
+    maps::PerCpuArray,
+};
 use clap::Parser;
 #[rustfmt::skip]
 use log::{debug, warn};
@@ -9,12 +13,12 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
-    style::{Color, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
-    Terminal,
+    Terminal, 
+    backend::CrosstermBackend, 
+    layout::{Constraint, Direction, Layout}, 
+    style::{Color, Modifier, Style}, 
+    text::{Line, Span}, 
+    widgets::{Block, Borders, Paragraph}
 };
 use std::{io, time::Duration};
 
@@ -75,6 +79,9 @@ async fn main() -> anyhow::Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     loop {
+
+        let packet_count = read_packet_count(&mut ebpf);
+
         terminal.draw(|frame| {
             let area = frame.area();
 
@@ -82,6 +89,7 @@ async fn main() -> anyhow::Result<()> {
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Length(3),
+                    Constraint::Length(5),
                     Constraint::Min(0),
                 ])
                 .split(area);
@@ -95,10 +103,23 @@ async fn main() -> anyhow::Result<()> {
             .block(Block::default().borders(Borders::ALL));
             frame.render_widget(title, chunks[0]);
 
+            let count_text = match packet_count {
+                Ok(n) => format!("{n}"),
+                Err(_) => " map read error ".to_string(),
+            };
+
+            let counter = Paragraph::new(Line::from(vec![
+                Span::raw(" Total Packets: "),
+                Span::styled(count_text, Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD))
+            ])).block(Block::default().borders(Borders::ALL).title(" Packets "));
+            frame.render_widget(counter, chunks[1]);
+
             let body = Block::default()                        
                 .borders(Borders::ALL)
-                .title(" Packets ");
-            frame.render_widget(body, chunks[1]);
+                .title(" (More stats coming) ");
+            frame.render_widget(body, chunks[2]);
         })?;
 
         if event::poll(Duration::from_millis(100))? {
@@ -115,4 +136,15 @@ async fn main() -> anyhow::Result<()> {
     terminal.show_cursor()?;
 
     Ok(())
+}
+
+
+fn read_packet_count(ebpf: &mut aya::Ebpf) -> anyhow::Result<u64> {
+    let map = PerCpuArray::<_,u64>::try_from(
+        ebpf.map_mut("PACKET_COUNT")
+            .context("PACKET_COUNT map not found")?,
+    )?;
+
+    let counts = map.get(&0, 0)?;
+    Ok(counts.iter().sum())
 }
