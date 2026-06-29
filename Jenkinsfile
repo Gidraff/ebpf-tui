@@ -17,7 +17,6 @@ spec:
 
     environment {
         CARGO_HOME = "${env.WORKSPACE}/.cargo"
-        RUSTUP_HOME = "${env.WORKSPACE}/.rustup"
     }
 
     stages {
