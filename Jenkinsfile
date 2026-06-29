@@ -1,10 +1,19 @@
 pipeline {
     
     agent {
-        docker { 
-            image 'rust:1.76'
-        }
+    kubernetes {
+        yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: rust
+    image: rust:1.76
+    command: ["sleep", "infinity"]
+'''
+        defaultContainer 'rust'
     }
+}
 
     environment {
         CARGO_HOME = "${env.WORKSPACE}/.cargo"
