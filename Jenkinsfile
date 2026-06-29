@@ -3,6 +3,7 @@ pipeline {
     agent {
         docker { 
             image 'rust:1.76'
+        }
     }
 
     environment {
