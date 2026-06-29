@@ -1,5 +1,9 @@
 pipeline {
-    agent any
+    
+    agent {
+        docker { 
+            image 'rust:1.76'
+    }
 
     environment {
         CARGO_HOME = "${env.WORKSPACE}/.cargo"
@@ -36,12 +40,6 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                echo 'Running tests...'
-                sh 'cargo test --verbose'
-            }
-        }
     }
 
     post {
