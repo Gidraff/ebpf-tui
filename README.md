@@ -1,36 +1,60 @@
 # ebpf-tui
 
 ## Prerequisites
+Install `limactl`
 
-1. stable rust toolchains: `rustup toolchain install stable`
-1. nightly rust toolchains: `rustup toolchain install nightly --component rust-src`
-1. (if cross-compiling) rustup target: `rustup target add ${ARCH}-unknown-linux-musl`
-1. (if cross-compiling) LLVM: (e.g.) `brew install llvm` (on macOS)
-1. (if cross-compiling) C toolchain: (e.g.) [`brew install filosottile/musl-cross/musl-cross`](https://github.com/FiloSottile/homebrew-musl-cross) (on macOS)
-1. bpf-linker: `cargo install bpf-linker` (`--no-default-features` on macOS)
+#### Running on MacOs using Limactl
+
+Use brew to install `limactl`.
+```shell
+brew install limactl
+```
+
+Then, run `limactl start` to start lima (default VM) or
+create an instance from Ubuntu template: 
+```shell 
+limactl create --name=ubuntu template://ubuntu
+```
+
+To open a shell inside the VM:
+```shell 
+limactl shell <instance-name>
+```
+
+Inside the VM, run the following commands to update the instance and install Rust dependencies and libraries.
+```shell
+sudo apt update
+
+sudo apt install -y rustup net-tools build-essential pkg-config libssl-dev
+```
+
+Install Rust toolchain:
+```shell
+rustup toolchain install nightly --component rust-src
+
+rustup target add bpfel-unknown-none
+
+# Install bpf-linker
+cargo install bpf-linker
+```
 
 ## Build & Run
 
 Use `cargo build`, `cargo check`, etc. as normal. Run your program with:
 
 ```shell
-cargo run --release
+# Build the eBPF program that runs on the Kernel
+cargo build --package ebpf-tui-ebpf --target bpfel-unknown-none -Z build-std=core
+
+# Build User-space application
+cargo build --package ebpf-tui
+
+# List the available Network interfaces:
+iconfig 
+
+# Run the User application:
+sudo ./target/debug/ebpf-tui --iface eth0
 ```
-
-Cargo build scripts are used to automatically build the eBPF correctly and include it in the
-program.
-
-## Cross-compiling on macOS
-
-Cross compilation should work on both Intel and Apple Silicon Macs.
-
-```shell
-CC=${ARCH}-linux-musl-gcc cargo build --package ebpf-tui --release \
-  --target=${ARCH}-unknown-linux-musl \
-  --config=target.${ARCH}-unknown-linux-musl.linker=\"${ARCH}-linux-musl-gcc\"
-```
-The cross-compiled program `target/${ARCH}-unknown-linux-musl/release/ebpf-tui` can be
-copied to a Linux server or VM and run there.
 
 ## License
 
