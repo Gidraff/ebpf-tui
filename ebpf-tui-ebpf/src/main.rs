@@ -2,10 +2,10 @@
 #![no_main]
 
 use aya_ebpf::{
-    bindings::xdp_action, 
-    macros::{xdp, map}, 
-    maps::PerCpuArray, 
-    programs::XdpContext
+    bindings::xdp_action,
+    macros::{map, xdp},
+    maps::PerCpuArray,
+    programs::XdpContext,
 };
 
 #[map]
@@ -20,8 +20,8 @@ pub fn ebpf_tui(ctx: XdpContext) -> u32 {
 }
 
 fn try_ebpf_tui(_ctx: XdpContext) -> Result<u32, u32> {
-    if let Some(count) = unsafe { PACKET_COUNT.get_ptr_mut(0)} {
-        unsafe { *count += 1};
+    if let Some(count) = unsafe { PACKET_COUNT.get_ptr_mut(0) } {
+        unsafe { *count += 1 };
     }
     Ok(xdp_action::XDP_PASS)
 }

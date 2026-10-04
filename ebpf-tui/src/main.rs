@@ -1,8 +1,8 @@
 // use anyhow::{Context as _, Ok};
 use anyhow::Context as _;
 use aya::{
-    programs::{Xdp, XdpFlags},
     maps::PerCpuArray,
+    programs::{Xdp, XdpFlags},
 };
 use clap::Parser;
 #[rustfmt::skip]
@@ -10,15 +10,15 @@ use log::{debug, warn};
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
-    Terminal, 
-    backend::CrosstermBackend, 
-    layout::{Constraint, Direction, Layout}, 
-    style::{Color, Modifier, Style}, 
-    text::{Line, Span}, 
-    widgets::{Block, Borders, Paragraph}
+    Terminal,
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Paragraph},
 };
 use std::{io, time::Duration};
 
@@ -71,21 +71,19 @@ async fn main() -> anyhow::Result<()> {
     program.attach(&iface, XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
 
-
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;            
+    execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
     loop {
-
         let packet_count = read_packet_count(&mut ebpf);
 
         terminal.draw(|frame| {
             let area = frame.area();
 
-            let chunks = Layout::default() 
+            let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Length(3),
@@ -110,21 +108,25 @@ async fn main() -> anyhow::Result<()> {
 
             let counter = Paragraph::new(Line::from(vec![
                 Span::raw(" Total Packets: "),
-                Span::styled(count_text, Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD))
-            ])).block(Block::default().borders(Borders::ALL).title(" Packets "));
+                Span::styled(
+                    count_text,
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            ]))
+            .block(Block::default().borders(Borders::ALL).title(" Packets "));
             frame.render_widget(counter, chunks[1]);
 
-            let body = Block::default()                        
+            let body = Block::default()
                 .borders(Borders::ALL)
                 .title(" (More stats coming) ");
             frame.render_widget(body, chunks[2]);
         })?;
 
         if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? { 
-                if key.code == KeyCode::Char('q') {          
+            if let Event::Key(key) = event::read()? {
+                if key.code == KeyCode::Char('q') {
                     break;
                 }
             }
@@ -138,9 +140,8 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-
 fn read_packet_count(ebpf: &mut aya::Ebpf) -> anyhow::Result<u64> {
-    let map = PerCpuArray::<_,u64>::try_from(
+    let map = PerCpuArray::<_, u64>::try_from(
         ebpf.map_mut("PACKET_COUNT")
             .context("PACKET_COUNT map not found")?,
     )?;
