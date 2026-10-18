@@ -34,7 +34,7 @@ jobs:
       - name: Install bpf-linker via binstall
         run: |
           cargo install cargo-binstall
-          cargo binstall --noprompt bpf-linker
+          cargo binstall -y bpf-linker
 
       - name: Cache cargo registry & build
         uses: actions/cache@v4
