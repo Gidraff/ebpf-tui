@@ -2,11 +2,17 @@
 use anyhow::Context as _;
 use aya::{
     maps::PerCpuArray,
-    programs::{Xdp, XdpFlags},
 };
+use aya::programs::Xdp;
+use aya::programs::xdp::XdpMode;
 use clap::Parser;
+use std::ffi::CString;
+
 #[rustfmt::skip]
 use log::{debug, warn};
+use std::{io, time::Duration};
+
+use std::convert::TryFrom;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
@@ -20,7 +26,6 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
-use std::{io, time::Duration};
 
 #[derive(Debug, Parser)]
 struct Opt {
@@ -52,8 +57,8 @@ async fn main() -> anyhow::Result<()> {
             warn!("failed to initialize eBPF logger: {e}");
         }
         Ok(logger) => {
-            let mut logger =
-                tokio::io::unix::AsyncFd::with_interest(logger, tokio::io::Interest::READABLE)?;
+            let mut logger = unsafe {
+                tokio::io::unix::AsyncFd::register_with_interest(logger, tokio::io::Interest::READABLE)?};
             tokio::task::spawn(async move {
                 loop {
                     let mut guard = logger.readable_mut().await.unwrap();
@@ -66,9 +71,13 @@ async fn main() -> anyhow::Result<()> {
 
     // ── XDP attach ───
     let Opt { iface } = opt;
+
     let program: &mut Xdp = ebpf.program_mut("ebpf_tui").unwrap().try_into()?;
     program.load()?;
-    program.attach(&iface, XdpFlags::default())
+
+    let c_iface = CString::new(iface.clone()).context("Invalid interface name contains null bytes")?;
+
+    program.attach(c_iface.as_c_str(), XdpMode::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
 
     enable_raw_mode()?;
