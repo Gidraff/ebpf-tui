@@ -1,5 +1,9 @@
 # ebpf-tui
 
+## Demo
+
+![ebpf-tui dashboard showing packet counts, source/destination addresses, and open ports](demo.png)
+
 ## Prerequisites
 Install `limactl`
 
