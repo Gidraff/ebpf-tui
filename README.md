@@ -3,36 +3,35 @@
 ## Prerequisites
 Install `limactl`
 
-#### Running on MacOs using Limactl
+#### Running on macOS using Lima
 
-Use brew to install `limactl`.
+Install Lima with Homebrew:
 ```shell
 brew install limactl
 ```
 
-Then, run `limactl start` to start lima (default VM) or
-create an instance from Ubuntu template: 
-```shell 
+Start the default VM or create an Ubuntu instance:
+```shell
 limactl create --name=ubuntu template://ubuntu
 ```
 
-To open a shell inside the VM:
-```shell 
+Open a shell inside the VM:
+```shell
 limactl shell <instance-name>
 ```
 
-Inside the VM, run the following commands to update the instance and install Rust dependencies and libraries.
+Inside the VM, install the system dependencies:
 ```shell
 sudo apt update
 
 sudo apt install -y rustup net-tools build-essential pkg-config libssl-dev
 ```
 
-Install Rust toolchain:
+Install the nightly Rust toolchain and BPF target:
 ```shell
 rustup toolchain install nightly --component rust-src
 
-rustup target add bpfel-unknown-none
+rustup target add bpfel-unknown-none --toolchain nightly
 
 # Install bpf-linker
 cargo install bpf-linker
@@ -40,21 +39,27 @@ cargo install bpf-linker
 
 ## Build & Run
 
-Use `cargo build`, `cargo check`, etc. as normal. Run your program with:
+The application and its embedded eBPF program run on Linux. The XDP program attaches to the
+selected interface and passes packets on to the normal network stack. The dashboard shows the
+total packet count, recent IPv4/IPv6 source and destination addresses, and TCP/UDP ports. Its
+open-ports panel reads listening TCP sockets and bound UDP sockets from `/proc/net`; it refreshes
+periodically and counts observed packets whose source or destination port matches one of them.
+The eBPF ring buffer requires Linux 5.8 or newer.
+
+Build the user-space application (this also builds and embeds the eBPF program):
 
 ```shell
-# Build the eBPF program that runs on the Kernel
-cargo build --package ebpf-tui-ebpf --target bpfel-unknown-none -Z build-std=core
+cargo +nightly build --package ebpf-tui
 
-# Build User-space application
-cargo build --package ebpf-tui
+# List available network interfaces:
+ifconfig -a
 
-# List the available Network interfaces:
-iconfig 
-
-# Run the User application:
+# Run the debug binary as root, replacing eth0 with your interface:
 sudo ./target/debug/ebpf-tui --iface eth0
 ```
+
+To build a release binary instead, use `cargo +nightly build --release --package ebpf-tui`
+and run `sudo ./target/release/ebpf-tui --iface eth0`.
 
 ## License
 
